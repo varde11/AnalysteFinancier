@@ -10,42 +10,41 @@ load_dotenv()
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode, tools_condition
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import SystemMessage,ToolMessage,AIMessage
 from pydantic import BaseModel
 import json
 
+
 NEWS_SYSTEM = """You are a Senior Financial News Researcher.
-Find the most relevant news for a given stock ticker from the LAST 7 DAYS.
 
-Focus on: Earnings reports, Analyst upgrades/downgrades, Product launches, Regulatory issues, Macro/sector news.
-Ignore: gossip, memes, minor daily fluctuations.
+You will work in TWO STEPS:
+STEP 1: Call the DuckDuckGo search tool to get RAW_TEXT.
+STEP 2: Extract news ONLY from RAW_TEXT and output JSON.
 
-ANTI-HALLUCINATION RULES (STRICT):
-- You may ONLY use facts explicitly present in RAW_TEXT.
-- For each news item, you MUST provide an 'evidence' field that is an exact substring copied from RAW_TEXT.
-- If you cannot find evidence in RAW_TEXT, you MUST NOT include that claim.
-- If RAW_TEXT is not relevant / too noisy, return an empty key_news list and explain in notes.
+STRICT RULES FOR STEP 2:
+- Only use facts explicitly present in RAW_TEXT.
+- Each item MUST include 'evidence' copied EXACTLY from RAW_TEXT.
+- If you cannot copy evidence from RAW_TEXT, do not include the claim.
 
-Here's your query to execute for the search: 
-ticker (earnings OR "price target" OR upgrade OR downgrade OR regulatory OR antitrust OR "product launch" OR AI) last 7 days
-
-OUTPUT: Return ONLY one valid JSON with this schema:
+Output ONLY JSON:
 {
   "sentiment": "POSITIVE|NEGATIVE|NEUTRAL",
-  "key_news": [
-    {"claim": "...", "evidence": "...", "confidence": "HIGH|MEDIUM|LOW"}
-  ],
+  "key_news": [{"claim": "...", "evidence": "...", "confidence": "HIGH|MEDIUM|LOW"}],
   "notes": null
 }
 """
 
 
+
 llm_groq = ChatGroq(api_key=os.getenv("myfirstApiKey"),model="qwen/qwen3-32b",temperature=0)
 llm = llm_groq.bind_tools([search_duck])
 
-# suppose que tu as NewsSummary et decide_portfolio importés
 
 sys_news = SystemMessage(content=NEWS_SYSTEM)
+
+
+def build_query(ticker: str) -> str:
+    return f'{ticker} (earnings OR "price target" OR upgrade OR downgrade OR regulatory OR antitrust OR "product launch" OR AI) last 7 days'
 
 def get_tech_node(state:State):
     
@@ -63,18 +62,67 @@ def get_tech_node(state:State):
     
     return {"tech": tech_result}
 
+def extract_last_tool_text(state):
+    for m in reversed(state["messages"]):
+        if isinstance(m, ToolMessage):
+            # DuckDuckGoSearchRun name varie selon versions : on prend le dernier ToolMessage
+            return str(m.content)
+    return None
+
 def news_llm_node(state: State):
-    # LLM + tool search_duck (bind_tools)
-    msg = llm.invoke([sys_news] + state["messages"])
-   
+    ticker = state["tech"]["ticker"] 
+    print("new_llms:",ticker) # idéalement tu le stockes dans state, sinon extrait dernier HumanMessage
+    raw_text = extract_last_tool_text(state)
+
+    if raw_text is None:
+        # STEP 1: tool call only
+        query = build_query(ticker)
+        msg = llm.invoke([
+            SystemMessage(content=NEWS_SYSTEM),
+            HumanMessage(content=f"STEP 1 ONLY: use the search tool now. Query: {query}")
+        ])
+        return {"messages": state["messages"] + [msg]}
+
+    # STEP 2: extraction strict JSON
+    msg = llm.invoke([
+        SystemMessage(content=NEWS_SYSTEM),
+        HumanMessage(content=f"TICKER: {ticker}\nRAW_TEXT:\n{raw_text}\n\nSTEP 2 ONLY: return JSON now.")
+    ])
     return {"messages": state["messages"] + [msg]}
 
-def parse_news_node(state:State):
-    # Ici, on parse le dernier message LLM en dict
-    # Si besoin, tu peux être plus robuste (try/except + fallback)
+
+
+def parse_news_node(state: State):
+    raw_text = extract_last_tool_text(state) or ""
     raw = state["messages"][-1].content
-    news_dict = json.loads(raw)
-    return {"news": news_dict}
+    news = json.loads(raw)
+
+    cleaned = []
+    for item in news.get("key_news", []):
+        ev = item.get("evidence", "")
+        if ev and ev in raw_text:
+            cleaned.append(item)
+
+    news["key_news"] = cleaned
+
+    if not cleaned:
+        news["sentiment"] = "NEUTRAL"
+        news["notes"] = "No verifiable evidence found in RAW_TEXT (tool output too noisy or irrelevant)."
+
+    return {"news": news}
+
+# def news_llm_node(state: State):
+#     # LLM + tool search_duck (bind_tools)
+#     msg = llm.invoke([sys_news] + state["messages"])
+   
+#     return {"messages": state["messages"] + [msg]}
+
+# def parse_news_node(state:State):
+#     # Ici, on parse le dernier message LLM en dict
+#     # Si besoin, tu peux être plus robuste (try/except + fallback)
+#     raw = state["messages"][-1].content
+#     news_dict = json.loads(raw)
+#     return {"news": news_dict}
 
 
 def decision_node(state: State):
@@ -115,7 +163,7 @@ agent = graph.compile()
 # Use a HumanMessage to properly format the input
 from langchain_core.messages import HumanMessage
 
-query = 'MSFT'
+query = 'TSLA'
 
 events = agent.stream(
     {"messages": [HumanMessage(content=query)]},
@@ -123,10 +171,10 @@ events = agent.stream(
 )
 
 # for event in events:
-#   event["messages"][-1].pretty_print()
+#    event["messages"][-1].pretty_print()
 
 for event in events:
-    msg = event["messages"][-1].content if "messages" in event and event["messages"] else None
+    msg = event["messages"] if "messages" in event and event["messages"] else None
     tch = event["tech"] if "tech" in event and event["tech"] else None
     nw = event["news"] if "news" in event and event["news"] else None
     fl = event["final"] if "final" in event and event["final"] else None
