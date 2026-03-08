@@ -4,6 +4,7 @@ from tools.technical_indicator import decide_portfolio,get_technical_indicators
 from tools.search import search_duck
 from schema import State,NewsSummary
 import os
+import re
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -44,7 +45,7 @@ sys_news = SystemMessage(content=NEWS_SYSTEM)
 
 
 def build_query(ticker: str) -> str:
-    return f'{ticker} (earnings OR "price target" OR upgrade OR downgrade OR regulatory OR antitrust OR "product launch" OR AI) last 7 days'
+    return  f'{ticker} (earnings OR "price target" OR upgrade OR downgrade OR antitrust OR regulatory) (site:reuters.com OR site:bloomberg.com OR site:wsj.com OR site:cnbc.com OR site:finance.yahoo.com) last 7 days'
 
 def get_tech_node(state:State):
     
@@ -69,6 +70,9 @@ def extract_last_tool_text(state):
             return str(m.content)
     return None
 
+
+
+
 def news_llm_node(state: State):
     ticker = state["tech"]["ticker"] 
     print("new_llms:",ticker) # idéalement tu le stockes dans state, sinon extrait dernier HumanMessage
@@ -92,6 +96,18 @@ def news_llm_node(state: State):
 
 
 
+def norm(s: str) -> str:
+    if not s:
+        return ""
+    s = s.lower()
+    # normalise apostrophes et guillemets
+    s = s.replace("’", "'").replace("“", '"').replace("”", '"')
+    s = s.replace("\\'", "'")  # parfois l'evidence contient des échappements
+    # compresse les espaces
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
 def parse_news_node(state: State):
     raw_text = extract_last_tool_text(state) or ""
     raw = state["messages"][-1].content
@@ -100,7 +116,7 @@ def parse_news_node(state: State):
     cleaned = []
     for item in news.get("key_news", []):
         ev = item.get("evidence", "")
-        if ev and ev in raw_text:
+        if ev and norm(ev) in norm(raw_text):
             cleaned.append(item)
 
     news["key_news"] = cleaned
@@ -163,7 +179,7 @@ agent = graph.compile()
 # Use a HumanMessage to properly format the input
 from langchain_core.messages import HumanMessage
 
-query = 'TSLA'
+query = 'MSFT'
 
 events = agent.stream(
     {"messages": [HumanMessage(content=query)]},
