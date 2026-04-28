@@ -1,0 +1,66 @@
+services:
+  imagefinance:
+    build: ./app
+      
+    image: varde11/imagefinance
+    container_name: containerfinance
+    ports:
+      - "8000:8000"
+    depends_on:
+      finance_database:
+        condition: service_healthy
+
+    
+    healthcheck:
+      
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthy')\" || exit 1"]
+      interval: 15s       
+      timeout: 5s         
+      retries: 3          
+      start_period: 60s
+
+
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      AUTHORIZED_URL1: ${AUTHORIZED_URL1}
+      AUTHORIZED_URL2: ${AUTHORIZED_URL2}
+      
+  
+  frontend:
+    image: varde11/finance_ui
+    build: ./frontend
+    container_name: containerfinanceui
+    ports:
+      - "80:80"
+    environment:
+      API_URL: ${API_URL}
+      PORT: 80
+    depends_on:
+      - imagefinance
+    
+ 
+  finance_database:
+    image: postgres:17
+    container_name: finance_database
+    ports:
+      - "5433:5432"
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: finance_database
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d finance_database"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d
+
+volumes:
+  postgres_data:
