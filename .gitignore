@@ -2,6 +2,6 @@ __pycache__
 .env
 AnalysteEnv
 wait.py
-frontend
+frontend/src
 eliot.py
 temp_agents.py
