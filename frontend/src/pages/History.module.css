@@ -1,0 +1,148 @@
+.page { max-width: 860px; display: flex; flex-direction: column; gap: 20px; }
+.msg  { color: var(--text-secondary); padding: 40px 0; }
+
+.title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+}
+
+/* Filtre */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.filterBtn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
+}
+
+.filterBtn:hover { border-color: var(--blue); color: var(--blue); }
+
+.filterBtn.active {
+  background: var(--blue-dim);
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.empty {
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 40px 0;
+}
+
+/* Chart */
+.chartCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 24px;
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+/* Liste */
+.list { display: flex; flex-direction: column; gap: 8px; }
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.row:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+.rowLeft { display: flex; flex-direction: column; gap: 3px; }
+
+.rowTicker {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.rowDate { font-size: 11px; color: var(--text-secondary); }
+
+.rowMid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.rowScore {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.rowPrice { font-size: 11px; color: var(--text-secondary); }
+
+/* Header avec bouton tout supprimer */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.deleteAllWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.deleteAllBtn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.deleteAllBtn:hover:not(:disabled) {
+  border-color: var(--red);
+  color: var(--red);
+  background: var(--red-dim);
+}
+
+.deleteAllConfirm {
+  border-color: var(--red);
+  color: var(--red);
+  background: var(--red-dim);
+  font-weight: 600;
+}
+
+.deleteAllBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.cancelBtn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.cancelBtn:hover { color: var(--text-primary); }
