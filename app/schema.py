@@ -40,15 +40,15 @@ class enumTicket(str, Enum):
     GOOG = "GOOG"
     MSFT = "MSFT"
     AAPL = "AAPL"
-    # Ajouts — profils variés pour tester les 3 décisions
-    NVDA = "NVDA"   # Nvidia  — très volatile, souvent overbought
-    META = "META"   # Meta    — tendance forte, bon benchmark
-    NFLX = "NFLX"   # Netflix — récemment en forte baisse, potentiel oversold
-    BA   = "BA"     # Boeing  — en crise longue, RSI souvent bas
-    ZS   = "ZS"     # Zscaler — cybersécurité, a perdu ~30% fin 2025
-    JPM  = "JPM"    # JPMorgan — bancaire stable, bon indicateur macro
-    GLD  = "GLD"    # Gold ETF — or en forte hausse, potentiel overbought
-    MO   = "MO"     # Altria  — tabac, valeur défensive souvent survendue
+    
+    NVDA = "NVDA"   
+    META = "META" 
+    NFLX = "NFLX"   
+    BA   = "BA"     
+    ZS   = "ZS"     
+    JPM  = "JPM"    
+    GLD  = "GLD"    
+    MO   = "MO"    
     MC_PA = "MC.PA"
     TTE = "TTE"
     AIR_PA = "AIR.PA"
