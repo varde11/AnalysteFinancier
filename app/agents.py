@@ -14,10 +14,6 @@ from langgraph.prebuilt import ToolNode
 from langchain_core.messages import SystemMessage, ToolMessage, HumanMessage
 
 
-# ─────────────────────────────────────────────
-# PROMPT SYSTÈME — ajout de la validation de fraîcheur
-# ─────────────────────────────────────────────
-
 NEWS_SYSTEM = """You are a Senior Financial News Researcher.
 
 You will work in TWO STEPS:
@@ -54,10 +50,6 @@ def load_agent_artificats():
     llm = llm_groq.bind_tools([search_duck])
 
 
-# ─────────────────────────────────────────────
-# QUERY BUILDER — on injecte le mois et l'année
-# pour pousser DuckDuckGo vers des résultats récents
-# ─────────────────────────────────────────────
 
 def build_query(ticker: str) -> str:
     month_year = datetime.now().strftime("%B %Y")  # ex: "April 2026"
@@ -68,10 +60,6 @@ def build_query(ticker: str) -> str:
     )
 
 
-# ─────────────────────────────────────────────
-# NODES — inchangés dans leur structure,
-# seul build_query a changé
-# ─────────────────────────────────────────────
 
 def get_tech_node(state: State):
     ticker = state["messages"]
