@@ -114,13 +114,13 @@ def parse_news_node(state: State):
     raw_text = extract_last_tool_text(state) or ""
     raw = state["messages"][-1].content
 
-    # ── Nettoyage robuste : le LLM entoure parfois le JSON de ```json ... ```
+  
     clean = re.sub(r"```(?:json)?", "", raw).strip().rstrip("`").strip()
 
     try:
         news = json.loads(clean)
     except json.JSONDecodeError:
-        # Fallback : on retourne un état neutre plutôt que de crasher
+        
         news = {
             "key_news": [],
             "sentiment": "NEUTRAL",
