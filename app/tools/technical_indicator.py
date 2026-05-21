@@ -17,10 +17,6 @@ class NewsSummary(BaseModel):
     notes: Optional[str] = None
 
 
-# ─────────────────────────────────────────────
-# RSI WILDER — inchangé, il était correct
-# ─────────────────────────────────────────────
-
 def rsi_wilder(close: pd.Series, window: int = 14) -> pd.Series:
     delta = close.diff()
     gain = delta.clip(lower=0)
@@ -32,9 +28,7 @@ def rsi_wilder(close: pd.Series, window: int = 14) -> pd.Series:
     return rsi
 
 
-# ─────────────────────────────────────────────
-# INDICATEURS TECHNIQUES — inchangé
-# ─────────────────────────────────────────────
+
 
 def get_technical_indicators(ticker: str) -> dict:
     if isinstance(ticker, list):
@@ -69,10 +63,6 @@ def get_technical_indicators(ticker: str) -> dict:
     }
 
 
-# ─────────────────────────────────────────────
-# SCORING RSI
-# Retourne (points, label explicatif)
-# ─────────────────────────────────────────────
 
 def _score_rsi(rsi: float):
     if rsi < 30:
@@ -87,10 +77,6 @@ def _score_rsi(rsi: float):
         return -2, f"RSI {rsi:.2f} > 70 → Surachetée (signal vente fort)"
 
 
-# ─────────────────────────────────────────────
-# SCORING TENDANCE SMA
-# On regarde : SMA50 vs SMA200 ET prix vs SMA50
-# ─────────────────────────────────────────────
 
 def _score_trend(price: float, sma50: float, sma200: float):
     golden_cross = sma50 > sma200                 # tendance longue haussière
@@ -108,11 +94,6 @@ def _score_trend(price: float, sma50: float, sma200: float):
     else:
         return -2, f"{cross_label} & {price_label} → Tendance forte baissière"
 
-
-# ─────────────────────────────────────────────
-# SCORING SENTIMENT
-# On exploite la confidence dominante des news
-# ─────────────────────────────────────────────
 
 def _dominant_confidence(key_news: List[KeyNewsItem]) -> str:
     """Retourne la confidence la plus fréquente parmi les news HIGH > MEDIUM > LOW."""
@@ -140,12 +121,6 @@ def _score_sentiment(news: NewsSummary):
         return -1, f"Sentiment NÉGATIF avec confiance dominante {confidence}"
 
 
-# ─────────────────────────────────────────────
-# RÈGLE DE SÉCURITÉ (cas krach)
-# Si NEGATIVE HIGH + Death Cross → malus supplémentaire
-# pour forcer SELL sur un krach confirmé
-# ─────────────────────────────────────────────
-
 def _safety_malus(news: NewsSummary, sma50: float, sma200: float) -> tuple:
     if (news.sentiment == "NEGATIVE"
             and _dominant_confidence(news.key_news) == "HIGH"
@@ -154,11 +129,6 @@ def _safety_malus(news: NewsSummary, sma50: float, sma200: float) -> tuple:
     return 0, None
 
 
-# ─────────────────────────────────────────────
-# DECIDE PORTFOLIO — scoring + report_detail structuré
-# report_detail est un dict JSON-friendly
-# que React consommera directement
-# ─────────────────────────────────────────────
 
 def decide_portfolio(tech: Dict, news: NewsSummary, use_trend_filter: bool = True) -> Dict:
     rsi    = float(tech["rsi_14"])
@@ -167,7 +137,7 @@ def decide_portfolio(tech: Dict, news: NewsSummary, use_trend_filter: bool = Tru
     sma200 = float(tech["sma_200"])
     ticker = tech["ticker"]
 
-    # ── Calcul des scores ──
+    
     score_rsi,   label_rsi   = _score_rsi(rsi)
     score_trend, label_trend = _score_trend(price, sma50, sma200)
     score_sent,  label_sent  = _score_sentiment(news)
@@ -175,7 +145,7 @@ def decide_portfolio(tech: Dict, news: NewsSummary, use_trend_filter: bool = Tru
 
     total = score_rsi + score_trend + score_sent + score_safe
 
-    # ── Décision ──
+    
     if total >= 3:
         decision = "BUY"
     elif total <= -3:
@@ -183,7 +153,7 @@ def decide_portfolio(tech: Dict, news: NewsSummary, use_trend_filter: bool = Tru
     else:
         decision = "HOLD"
 
-    # ── Explication en langage naturel ──
+
     if decision == "BUY":
         explanation = (
             f"Les signaux convergent en faveur d'un achat sur {ticker}. "
@@ -210,26 +180,24 @@ def decide_portfolio(tech: Dict, news: NewsSummary, use_trend_filter: bool = Tru
 
     dominant_conf = _dominant_confidence(news.key_news)
 
-    # ── report_detail : structure JSON consommable directement par React ──
-    # Chaque bloc correspond à une section de l'UI
     report_detail = {
-        "decision": decision,                    # "BUY" | "SELL" | "HOLD"
-        "total_score": total,                    # int  ex: +3
-        "max_score": 6,                          # référence pour la barre de progression
-        "explanation": explanation,              # phrase lisible pour l'utilisateur
+        "decision": decision,                    
+        "total_score": total,                    
+        "max_score": 6,                          
+        "explanation": explanation,              
 
-        # Bloc indicateurs techniques — section "📊" dans l'UI
+        
         "technicals": {
             "ticker": ticker,
             "current_price": round(price, 2),
             "rsi": round(rsi, 2),
             "sma50": round(sma50, 2),
             "sma200": round(sma200, 2),
-            "golden_cross": sma50 > sma200,      # bool → badge vert/rouge dans React
-            "price_above_sma50": price > sma50,  # bool → indique momentum court terme
+            "golden_cross": sma50 > sma200,      
+            "price_above_sma50": price > sma50,  # bool 
         },
 
-        # Bloc sentiment — section "📰" dans l'UI
+        
         "news_summary": {
             "sentiment": news.sentiment,
             "dominant_confidence": dominant_conf,
@@ -243,9 +211,6 @@ def decide_portfolio(tech: Dict, news: NewsSummary, use_trend_filter: bool = Tru
             ],
         },
 
-        # Bloc scores détaillés — section "🧮" dans l'UI
-        # score est un int signé, label est la phrase explicative
-        # React peut colorer chaque ligne en vert (>0), rouge (<0), gris (=0)
         "score_breakdown": [
             {
                 "signal": "RSI",
@@ -269,7 +234,7 @@ def decide_portfolio(tech: Dict, news: NewsSummary, use_trend_filter: bool = Tru
         ],
     }
 
-    # step_by_step_check conservé pour compatibilité DB existante
+    
     step = (
         f"RSI={rsi:.2f}({score_rsi:+d}) | "
         f"Trend SMA50/200={sma50:.2f}/{sma200:.2f}({score_trend:+d}) | "
